@@ -1,114 +1,176 @@
-# _infra — Central de Segurança dos Projetos Prefeitura
+# PHP Deploy Guard
 
-## Por que existe
+Central de segurança para projetos PHP hospedados em servidor compartilhado.
 
-Em uma sessão de trabalho num projeto pessoal, um arquivo `index.php` errado foi enviado via FTP para o servidor da Prefeitura, caindo no site dos estagiários. O site ficou com conteúdo errado por 3 dias sem ninguém perceber.
+Resolve um problema clássico de equipes pequenas: **um deploy errado sobrescrevendo o projeto errado**. Adiciona uma camada de verificação antes de qualquer operação SSH ou FTP, monitora os sites automaticamente e facilita o desenvolvimento local com Docker.
 
-Este diretório previne isso com:
-1. **guard.sh** — wrapper de segurança que intercepta `lftp/ssh/scp`
-2. **local-env.sh** — ambiente Docker local para qualquer projeto
-3. **dump.sh** — puxa SQL de produção para testes locais
-4. **monitor.php** (em `Logs/`) — verifica uptime e envia email de alerta
+![Guard bloqueando deploy suspeito](screenshots/02-guard-terminal.png)
+
+![Monitor de uptime detectando falhas](screenshots/03-monitor-terminal.png)
 
 ---
 
-## Setup (uma vez só)
+## O que faz
 
-### 1. Instalar dependência Python (para ler projects.yml)
+- **`guard.sh`** — intercepta `lftp`, `ssh` e `scp` automaticamente. Verifica se o arquivo que você está enviando pertence ao projeto de destino antes de deixar passar.
+- **`local-env.sh`** — sobe qualquer projeto localmente com Docker em um comando.
+- **`dump.sh`** — puxa o banco de produção via SSH e injeta no ambiente local.
+- **`monitor.php`** (em `Logs/`) — verifica uptime e erros PHP nos sites, envia email de alerta.
+
+---
+
+## Estrutura
+
+```
+_infra/
+├── projects.yml      # todos os projetos, domínios, keywords e configurações
+├── guard.sh          # wrapper de segurança para SSH/FTP
+├── local-env.sh      # gerenciador de ambiente Docker local
+├── dump.sh           # sync de banco produção → local
+└── README.md
+```
+
+---
+
+## Setup
+
+### 1. Dependência Python (leitura do projects.yml)
+
 ```bash
 pip install pyyaml
 ```
 
-### 2. Ativar wrappers no Fish shell
+### 2. Configurar os projetos
+
+Edite `projects.yml` com seus projetos, domínios e credenciais. Cada projeto define:
+
+```yaml
+projects:
+  meu-projeto:
+    name: "Nome do Projeto"
+    domain: meusite.com.br
+    remote_path: ~/domains/meusite.com.br/public_html
+    ftp_user: usuario_ftp
+    db_name: nome_do_banco
+    db_user: usuario_do_banco
+    docker_port: 8090
+    keywords:
+      - palavra-chave-do-projeto
+      - outra-palavra
+```
+
+As `keywords` são o coração da segurança: o guard verifica se o arquivo que você está enviando contém ao menos uma delas. Um arquivo sem nenhuma keyword do projeto é bloqueado.
+
+### 3. Ativar os wrappers no Fish shell
+
 Adicione ao `~/.config/fish/config.fish`:
+
 ```fish
-# Guard de segurança — só ativo dentro do diretório da Prefeitura
+set -g _GUARD "/caminho/para/_infra/guard.sh"
+set -g _PROJETOS "/caminho/para/seus/projetos"
+
 function lftp
-    set INFRA "$HOME/Documentos/Github/Estagio_Prefeitura/_infra/guard.sh"
-    if string match -q "$HOME/Documentos/Github/Estagio_Prefeitura*" (pwd)
-        bash $INFRA lftp $argv
+    if string match -q "$_PROJETOS*" (pwd)
+        bash $_GUARD lftp $argv
     else
         command lftp $argv
     end
 end
 
 function ssh
-    set INFRA "$HOME/Documentos/Github/Estagio_Prefeitura/_infra/guard.sh"
-    if string match -q "$HOME/Documentos/Github/Estagio_Prefeitura*" (pwd)
-        bash $INFRA ssh $argv
+    if string match -q "$_PROJETOS*" (pwd)
+        bash $_GUARD ssh $argv
     else
         command ssh $argv
     end
 end
+
+function scp
+    if string match -q "$_PROJETOS*" (pwd)
+        bash $_GUARD scp $argv
+    else
+        command scp $argv
+    end
+end
 ```
 
-### 3. Tornar scripts executáveis
+### 4. Tornar os scripts executáveis
+
 ```bash
-chmod +x _infra/guard.sh _infra/local-env.sh _infra/dump.sh
+chmod +x guard.sh local-env.sh dump.sh
 ```
 
-### 4. Instalar PHPMailer no Logs (no servidor via SSH)
-```bash
-ssh -p 65002 u492577848@46.202.145.215 \
-  "cd ~/domains/logs.protocolosead.com/public_html && composer install --no-dev"
+---
+
+## Como o guard funciona
+
+Quando você roda `lftp`, `ssh` ou `scp` dentro do diretório de projetos:
+
+```
+1. Identifica o projeto pelo usuário FTP ou host SSH
+2. Mostra um banner confirmando o destino
+3. Para cada arquivo enviado:
+   → Verifica se contém keywords do projeto
+   → Se não contiver: BLOQUEIA e exige digitar o nome do projeto
+   → Se diff com remoto > 40%: mostra o diff e pede confirmação
+4. Registra tudo em logs/deploys_YYYY-MM.log
 ```
 
-### 5. Configurar cron no Hostinger
-No painel Hostinger → Cron Jobs:
+Exemplo de bloqueio:
+
 ```
-*/5 * * * * php ~/domains/logs.protocolosead.com/public_html/monitor.php
+┌──────────────────────────────────────────────────┐
+│ ⚠  GUARD ATIVO — Portal Estagiários              │
+│    Domínio:  estagiopaudosferros.com             │
+│    Path:     ~/domains/.../public_html           │
+└──────────────────────────────────────────────────┘
+
+[GUARD] BLOQUEADO. O arquivo não parece pertencer ao projeto 'estagio'.
+Digite o nome do projeto para confirmar:
 ```
-Defina a variável de ambiente `SMTP_PASS` com a senha do email `noreply@protocolosead.com`.
 
 ---
 
 ## Uso diário
 
-### Verificar um arquivo antes de enviar manualmente
 ```bash
-./_infra/guard.sh check estagio ./build/index.php
-```
+# Verificar um arquivo manualmente antes de enviar
+./guard.sh check meu-projeto ./arquivo.php
 
-### Fazer git pull num projeto via SSH
-```bash
-./_infra/guard.sh pull sema
-```
+# Git pull em produção com confirmação
+./guard.sh pull meu-projeto
 
-### Subir ambiente local
-```bash
-./_infra/local-env.sh start sema
-./_infra/local-env.sh start estagio
-./_infra/local-env.sh status
-```
+# Subir ambiente local
+./local-env.sh start meu-projeto
+./local-env.sh status
+./local-env.sh stop meu-projeto
 
-### Puxar SQL de produção para local
-```bash
-./_infra/dump.sh sema
-```
-
-### Testar envio de email do monitor
-```bash
-ssh -p 65002 u492577848@46.202.145.215 \
-  "php ~/domains/logs.protocolosead.com/public_html/monitor.php --test-email"
+# Puxar banco de produção para local
+./dump.sh meu-projeto
 ```
 
 ---
 
-## Como o guard detecta projetos
+## Monitor de uptime
 
-O guard identifica o projeto pelo **usuário FTP** passado para o `lftp` (campo `-u`). Por exemplo:
-- `-u "estagio,senha"` → projeto `estagio`
-- `-u "u492577848.semapmpfestagio,senha"` → projeto `sema`
+O `monitor.php` (instalado no servidor junto com o painel de logs) verifica:
 
-Se não conseguir identificar, pergunta interativamente.
+- ✅ HTTP 200 — site OK
+- 🔴 HTTP != 200 ou timeout — site fora do ar → email de alerta
+- 🔶 HTTP 200 mas com `Fatal error` / `Parse error` no HTML — erro PHP → email de alerta
 
----
+Configure no cron do servidor:
 
-## Regras de bloqueio
+```
+*/60 * * * * php ~/domains/seu-painel/public_html/monitor.php
+```
 
-1. **Sem keyword do projeto no arquivo** → BLOQUEADO. Para forçar, precisa digitar o ID do projeto.
-2. **Diff > 40% com arquivo remoto** → Mostra diff colorido e pede confirmação (s/N).
-3. **SSH para o servidor** → Pergunta qual projeto antes de abrir sessão.
+Credenciais SMTP ficam em `.env` (nunca versionado):
+
+```bash
+# .env
+SMTP_PASS=sua_senha
+```
 
 ---
 
@@ -116,9 +178,18 @@ Se não conseguir identificar, pergunta interativamente.
 
 | Arquivo | Conteúdo |
 |---------|---------|
-| `_infra/logs/deploys_YYYY-MM.log` | Histórico de todos os deploys/uploads |
-| `Logs/logs/uptime_YYYY-MM.log` | Verificações de uptime dos domínios |
-| `Logs/logs/alerts_YYYY-MM.log` | Alertas de email enviados |
-| `Logs/logs/status.json` | Status atual dos domínios (atualizado a cada 5 min) |
+| `logs/deploys_YYYY-MM.log` | Histórico completo de uploads e sessões SSH |
+| `logs/uptime_YYYY-MM.log` | Resultado de cada verificação de uptime |
+| `logs/alerts_YYYY-MM.log` | Registro de emails de alerta enviados |
+| `logs/status.json` | Status atual dos domínios (consumido pelo painel web) |
 
-O painel em `Logs/painel.php` mostra tudo isso em tempo real.
+---
+
+## Requisitos
+
+- Bash 4+
+- Python 3 + pyyaml
+- Docker (para `local-env.sh`)
+- SSH com chave configurada no servidor
+- PHP 8.0+ no servidor (para `monitor.php`)
+- PHPMailer (`composer install` na pasta do painel)
