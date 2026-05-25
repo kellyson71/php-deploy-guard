@@ -1,0 +1,151 @@
+defaults:
+  ssh_host: 46.202.145.215
+  ssh_port: 65002
+  ssh_user: u492577848
+  ssh_key: ~/.ssh/id_ed25519
+  db_host: srv1844.hstgr.io
+
+projects:
+  estagio:
+    name: "Portal Estagiários"
+    domain: estagiopaudosferros.com
+    remote_path: ~/domains/estagiopaudosferros.com/public_html
+    ftp_user: estagio
+    db_name: u492577848_estagio
+    db_user: u492577848_estagio
+    docker_port: 8082
+    keywords:
+      - estagio
+      - estagiario
+      - contrato
+      - curriculo
+      - inscricao
+      - candidato
+
+  estagiario-pdf:
+    name: "Estagiário PDF"
+    domain: estagiopaudosferros.com
+    remote_path: ~/domains/estagiopaudosferros.com/public_html
+    ftp_user: estagio
+    db_name: u492577848_estagio
+    db_user: u492577848_estagio
+    docker_port: 8083
+    keywords:
+      - estagiario
+      - pdf
+      - documento
+      - termo
+      - relatorio
+
+  sema:
+    name: "SEMA - Licenças Ambientais"
+    domain: sema.protocolosead.com
+    remote_path: ~/domains/sema.protocolosead.com/public_html
+    ftp_user: u492577848.semapmpfestagio
+    db_name: u492577848_SEMA
+    db_user: u492577848_SEMA
+    deploy_method: git_pull
+    docker_port: 8090
+    keywords:
+      - sema
+      - alvara
+      - ambiental
+      - parecer
+      - requerimento
+      - licenca
+      - prefeitura
+      - pau dos ferros
+
+  curtapdf:
+    name: "Festival de Cinema - CurtaPDF"
+    domain: curtapdf.com.br
+    remote_path: ~/domains/curtapdf.com.br/public_html
+    ftp_user: u492577848.curtapdf.com.br
+    db_name: u492577848_curtapdf
+    db_user: u492577848_curtapdf
+    docker_port: 8084
+    keywords:
+      - curtapdf
+      - cinema
+      - inscricao
+      - festival
+      - filme
+      - curta
+
+  demutran:
+    name: "DEMUTRAN"
+    domain: demutranpaudosferros.com.br
+    remote_path: ~/domains/demutranpaudosferros.com.br/public_html
+    ftp_user: u492577848.demutran
+    db_name: u492577848_demutran
+    db_user: u492577848_demutran
+    docker_port: 8085
+    keywords:
+      - demutran
+      - transito
+      - multa
+      - jari
+      - autuacao
+      - veiculo
+      - infrator
+
+  protocolo:
+    name: "Protocolo SEAD"
+    domain: protocolosead.com
+    remote_path: ~/domains/protocolosead.com/public_html
+    ftp_user: u492577848.protocolosead
+    db_name: u492577848_protocolo
+    db_user: u492577848_protocolo
+    docker_port: 8086
+    keywords:
+      - protocolo
+      - sead
+      - requerimento
+      - secretaria
+      - administracao
+      - prefeitura
+
+  junta:
+    name: "Junta Médica"
+    domain: junta.estagiopaudosferros.com
+    remote_path: ~/domains/junta.estagiopaudosferros.com/public_html
+    ftp_user: u492577848.junta
+    db_name: u492577848_junta
+    db_user: u492577848_junta
+    docker_port: 8087
+    keywords:
+      - junta
+      - medica
+      - pericia
+      - agendamento
+      - servidor
+      - saude
+
+  votacao:
+    name: "Sistema de Votação"
+    domain: votacao.estagiopaudosferros.com
+    remote_path: ~/domains/votacao.estagiopaudosferros.com/public_html
+    ftp_user: u492577848.votacao
+    db_name: u492577848_votacao
+    db_user: u492577848_votacao
+    docker_port: 8088
+    keywords:
+      - votacao
+      - candidato
+      - voto
+      - eleicao
+      - resultado
+
+  logs:
+    name: "Painel de Logs"
+    domain: logs.protocolosead.com
+    remote_path: ~/domains/logs.protocolosead.com/public_html
+    ftp_user: u492577848.logs.protocolosead.com
+    db_name: ""
+    docker_port: 8089
+    keywords:
+      - logs
+      - monitor
+      - painel
+      - sistema
+      - uptime
