@@ -4,6 +4,10 @@ Central de segurança para projetos PHP hospedados em servidor compartilhado.
 
 Resolve um problema clássico de equipes pequenas: **um deploy errado sobrescrevendo o projeto errado**. Adiciona uma camada de verificação antes de qualquer operação SSH ou FTP, monitora os sites automaticamente e facilita o desenvolvimento local com Docker.
 
+| Login | Painel de logs |
+|-------|---------------|
+| ![Login](screenshots/01-login.png) | ![Painel](screenshots/04-painel.png) |
+
 ![Guard bloqueando deploy suspeito](screenshots/02-guard-terminal.png)
 
 ![Monitor de uptime detectando falhas](screenshots/03-monitor-terminal.png)
